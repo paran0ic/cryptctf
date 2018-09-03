@@ -18,7 +18,10 @@ my $space=1;
 $debug=1 if ($opt =~ m/v/);
 $debug=10 if ($opt =~ m/vv/);
 $space=0 if ($opt =~ m/s/);
-
+if($opt =~ m/h/i){
+	print "help: v - verbose vv- more verbose s- no space in alphabet\n";
+	exit 0;
+}
 
 while(<>)
 {
@@ -68,7 +71,7 @@ while(<>)
 		print "\nklucz: ".$mykey. ' waga: '.$wagi{$mykey}.' '.XorString($mykey,hex2bin($linia))."\nInne klucze:\n"	;
 		my @keys = sort { $wagi{$b} <=> $wagi{$a} } keys(%wagi);
 		my @vals = @wagi{@keys};
-		for(my $i=1;$i<3;$i++){
+		for(my $i=1;$i<9;$i++){
 			print "klucz: ".$keys[$i]. ' waga: '.$vals[$i].' '.XorString($keys[$i],hex2bin($linia))."\n"	;
 		}
 	}
@@ -90,7 +93,7 @@ sub Etaoin
 	my $ee='etaoinshrdlu';
 	$ee = ' '.$ee if($space);
 	my $m=0;
-	my $i=length($ee);
+	my $i=length($ee)+6;
 	foreach my $e (split(//,$ee)){
 		my $count = () = $string =~ /$e/g;
 		$m+=($i*$count);
