@@ -68,11 +68,12 @@ while(<>)
 		}
 	}
 	if($debug){
-		print "\nklucz: ".$mykey. ' waga: '.$wagi{$mykey}.' '.XorString($mykey,hex2bin($linia))."\nInne klucze:\n"	;
+		print "\nklucz: ".$mykey. ' waga: '.$wagi{$mykey}.': '.XorString($mykey,hex2bin($linia))."\nInne klucze:\n"	;
 		my @keys = sort { $wagi{$b} <=> $wagi{$a} } keys(%wagi);
 		my @vals = @wagi{@keys};
 		for(my $i=1;$i<9;$i++){
-			print "klucz: ".$keys[$i]. ' waga: '.$vals[$i].' '.XorString($keys[$i],hex2bin($linia))."\n"	;
+			my $probtext=XorString($keys[$i],hex2bin($linia));
+			print "klucz: $keys[$i](".chr($keys[$i]) . ') waga: '.$vals[$i].' len: '.length($probtext).': '.$probtext."\n"	;
 		}
 	}
 	if($maax>$wagamax){
@@ -82,7 +83,7 @@ while(<>)
 	}
 }
 
-print "\nklucz: ".$kluczmax. ": $liniamax ".XorString($kluczmax,hex2bin($liniamax))."\n"	;
+print "\nklucz: $kluczmax (".chr($kluczmax)."): $liniamax: ".XorString($kluczmax,hex2bin($liniamax))."\n"	;
 
 
 sub Etaoin
@@ -90,8 +91,8 @@ sub Etaoin
 	my $string=shift;
 	my @tab;
 	$string=lc($string);
-	my $ee='etaoinshrdlu';
-	$ee = ' '.$ee if($space);
+	my $ee='etaoin shrdlu';
+	$ee = 'etaoinshrdlu' if($space);
 	my $m=0;
 	my $i=length($ee)+6;
 	foreach my $e (split(//,$ee)){
@@ -100,7 +101,18 @@ sub Etaoin
 		
 		$i--;
 	}	
-	return $m;
+	foreach my $a (split(//,$string)){
+		if(ord($a)>127 || ord($a)<32){
+			$m-=30;
+		}
+		if(ord($a)==10 || ord($a)==13){
+			$m+=20;
+		}
+		if((ord($a)>32 && ord($a)<48)||(ord($a)>57 && ord($a)<65)||(ord($a)>90 && ord($a)<97)||(ord($a)>122 && ord($a)<128)){
+			$m-=10;
+		}
+	}
+	return $m/(length($string)+1);
 }
 
 sub hex2bin
