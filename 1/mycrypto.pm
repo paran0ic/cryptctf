@@ -7,7 +7,7 @@ use Exporter;
 #require Exporter;
 @ISA = qw(Exporter);
 
-@EXPORT = qw/decryptcbc encryptcbc decryptecb encryptecb padding XorStrings randomkey toHex printRule/;
+@EXPORT = qw/decryptcbc encryptcbc decryptecb encryptecb padding XorStrings randomkey toHex printRule padding_valid/;
 
 sub decryptcbc
 {
@@ -32,12 +32,15 @@ sub decryptcbc
 		$ciphertext=$b;
 	
 	}
+	if(padding_valid($lastplain)==0){
+	    return "paddingerror";
+	}
 	my @last= split(//,$lastplain);
 	my $pad=ord $last[$blocksize-1];
 	for(my $i=$blocksize-1;$i>1;$i--){
 		if($pad != ord $last[$i]){
 			if($pad != $blocksize-$i-1){
-				print "padding error! ";
+				print "paddingerror! ";
 			}else{
 				$i=0;
 				last;
@@ -100,6 +103,9 @@ sub encryptcbc
 	my ($ciph,$key,$iv) = @_;
 	my $c = Crypt::Cipher->new('AES', $key);
 	my $blocksize  = $c->blocksize;
+	if((length($key) != $blocksize) || (length($iv) != $blocksize)){
+	    die "bad KEY or IV\n"; 
+	}
 	my @bins=split(//,$ciph);
 	my $j=-1;
 	my @blocks; #= ($text =~ m/(.{16})/gm);
@@ -111,6 +117,8 @@ sub encryptcbc
 	#print "$padd \n";
 	if($padd){
 		$blocks[-1] .= chr($padd) x $padd;
+	}else{
+	    $blocks[scalar @blocks]=chr($blocksize) x $blocksize;
 	}
 	my $ciphertext ='';
 	my $lastciph=$iv;
@@ -137,6 +145,8 @@ sub encryptecb
 	#print "$padd\n";
 	if($padd>0){
 		$blocks[-1] .= chr($padd) x $padd;
+	}else{
+	    $blocks[scalar @blocks]=chr($blocksize) x $blocksize;
 	}
 	my $ciphertext ='';
 	my $lastciph='';
@@ -199,5 +209,44 @@ sub printRule
 {
 	print "0123456789ABCDEF";
 }
+sub padding_valid
+{
+	my ($text,$blocksize) = @_;
+	my @bins=split(//,$text);
+	$blocksize  or  $blocksize=16;
+	my $j=-1;
+	my @blocks; #= ($text =~ m/(.{16})/gm);
+	for(my $i=0;$i<(scalar @bins);$i++){
+		if($i%$blocksize==0) {$j++;}
+		$blocks[$j] .= $bins[$i];
+	}
+	my @last= split(//,$blocks[-1]);
+	if(scalar @last != $blocksize){
+        #print "Padding error 1: last block len<>16! " ;
+        return 0;
+	}
+	my $pad=ord $last[$blocksize-1];
+    if($pad<1 || $pad>$blocksize){
+        #print "Padding error 2: last byte > $blocksize! " ;
+        return 0;
+    }
+    
+    
+    if(substr($blocks[-1],$blocksize-$pad, $pad) ne chr($pad) x $pad){
+		#print "padding error 3: mismatch! ";
+		return 0;
+    }
+    
+	for(my $i=$blocksize-$pad;$i<$blocksize;$i++){
+		if($pad != ord $last[$i]){
+			if($pad != $blocksize-$i-1){
+#				print "padding error 3: mismatch! ";
+#				return 0;
+			}
+		}
+	}
+	return 1 ;
+}
+
 1;		
 
