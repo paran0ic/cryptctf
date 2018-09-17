@@ -15,8 +15,8 @@ my $blocksize=16;
 #binmode(STDIN);
 #$text=join('',<>);
 
-$key='vP/@{hF"=1i|q4sY';
-$iv= 'dfsdfsd|q68(4ml8';
+#$key='vP/@{hF"=1i|q4sY';
+#$iv= 'dfsdfsd|q68(4ml8';
 
 my @text = split /\n/, <<HERE1;
 MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=
@@ -41,45 +41,65 @@ print '-' x 32; print "\n";
 
 print "Padding valid: ". func2($ciph)."\n";
 
+my $recovered = '';
 
-
-my @blocks = ciph2block($ciph);
-my @Cp=split(//,randomkey());
-my $ciph2;
-my $plainblock='';
-
-print '-' x 32; print "\n"; 
-
-my $N=1;
-
-my @Co=split(//,$blocks[($#blocks - $N)]);
-
-for(my $j=1;$j<$blocksize;$j++){
-    my $i=$blocksize-$j; #pozycja do testowania
-    my $z=0; #pasujacy znak
-    for($z=0;$z<256;$z++){
-        $Cp[$i]=chr($z);
-        $ciph2=join('',@blocks[0..($#blocks - $N)],join('',@Cp),$blocks[-1]);
-        if(oracle($ciph2)){
-            print $z;
-            last;
-        }
-    }
-    my $D=chr($j)^chr($z);
-    my $P=$D^$Co[$i];
-    printf("%d %d z:%.2X d:%.2X p:%.2X Co:%.2X\n",$i,$j,$z,ord($D),ord($P),ord($Co[$i]));
-    print toHex(join('',@Cp));
-    $Cp[$i]=$D^chr($j+1);
-    for(my $c=1;$c<$j;$c++){
-        $Cp[$i+$c]=  $Cp[$i+$c]^chr($j)^chr($j+1)
-    } 
-    $plainblock.=$P if(ord($P)>$blocksize);
+for(my $i=length($ciph)/$blocksize-1;$i>=0;$i--){
+	$recovered .= attack_block($i,$ciph,$iv);
 }
-print '-' x 32; print "\n"; 
 
-print toHex($ciph2);
+print "\nPlain text:\n$recovered \n";
+#attack_block(1);
 
-print "Plain last block: ".reverse($plainblock)."\n";
+exit 0;
+
+
+
+
+sub attack_block
+{
+
+	my ($N,$ciph,$iv)=@_;
+
+
+	$ciph = $iv.$ciph;
+	my @blocks = ciph2block($ciph);
+	my @Cp=split(//,randomkey());
+	my $ciph2;
+	my $plainblock='';
+
+#	print '-' x 32; print "\n"; 
+
+
+	my @Co=split(//,$blocks[($#blocks - $N-1)]);
+
+	for(my $j=1;$j<$blocksize+1;$j++){
+	    my $i=$blocksize-$j; #pozycja do testowania
+	    my $z=0; #pasujacy znak
+	    for($z=0;$z<256;$z++){
+		$Cp[$i]=chr($z);
+		$ciph2=join('',join('',@Cp),$blocks[$#blocks - $N]);
+		if(oracle($ciph2)){
+		    #print $z;
+		    last;
+		}
+	    }
+	    my $D=chr($j)^chr($z);
+	    my $P=$D^$Co[$i];
+#	    printf("%d %d z:%.2X d:%.2X p:%.2X Co:%.2X\n",$i,$j,$z,ord($D),ord($P),ord($Co[$i]));
+#	    print toHex(join('',@Cp));
+	    $Cp[$i]=$D^chr($j+1);
+	    for(my $c=1;$c<$j;$c++){
+		$Cp[$i+$c]=  $Cp[$i+$c]^chr($j)^chr($j+1)
+	    } 
+	    $plainblock.=$P if(ord($P)>$blocksize);
+	}
+#	print '-' x 32; print "\n"; 
+
+#	print toHex($ciph2);
+#	print "Plain last block: ".reverse($plainblock)."\n";
+	return reverse($plainblock);
+}
+
 sub oracle
 {
     return func2(shift);

@@ -7,7 +7,7 @@ use Exporter;
 #require Exporter;
 @ISA = qw(Exporter);
 
-@EXPORT = qw/decryptcbc encryptcbc decryptecb encryptecb padding XorStrings randomkey toHex printRule padding_valid/;
+@EXPORT = qw/decryptcbc encryptcbc decryptecb encryptecb cryptctr padding XorStrings randomkey toHex printRule padding_valid split2block/;
 
 sub decryptcbc
 {
@@ -37,11 +37,9 @@ sub decryptcbc
 	}
 	my @last= split(//,$lastplain);
 	my $pad=ord $last[$blocksize-1];
-	for(my $i=$blocksize-1;$i>1;$i--){
+	for(my $i=$blocksize-1;$i>=0;$i--){
 		if($pad != ord $last[$i]){
-			if($pad != $blocksize-$i-1){
-				print "paddingerror! ";
-			}else{
+			if($pad == $blocksize-$i-1){
 				$i=0;
 				last;
 			}
@@ -247,6 +245,39 @@ sub padding_valid
 	}
 	return 1 ;
 }
+sub cryptctr
+{
+	my ($text,$key,$nonce) = @_;
+	my $out='';
+	my $ctr=0;
+	my $c = Crypt::Cipher->new('AES', $key);
+	my $blocksize  = $c->blocksize;
+	if((length($key) != $blocksize) || (length($nonce) != $blocksize/2)){
+	    die "bad KEY or IV\n"; 
+	}
+	my @block = split2block($text,$blocksize);
+	foreach (@block){
+		#print $_,"\n";
+		my $binctr=pack("Q<", $ctr);
+		$ctr++;
+		my $keystream=substr($c->encrypt($nonce.$binctr),0,length($_)); #substr bo obciecie ostatniego bloku
+		$out .=$keystream^$_;
+	}
+	return $out; 
+}
 
+sub split2block
+{
+    my ($ciph, $n) = @_;
+    my $cliphlen=length($ciph);
+	my @bins=split(//,$ciph);
+	my $j=-1;
+	my @block; #= ($text =~ m/(.{16})/gm);
+	for(my $i=0;$i<(scalar @bins);$i++){
+		if($i%$n==0) {$j++;}
+		$block[$j] .= $bins[$i];
+	}
+	return @block;
+}
 1;		
 
